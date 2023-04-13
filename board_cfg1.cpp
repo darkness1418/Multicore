@@ -29,13 +29,16 @@ void Board::deduceOneVal(CellVal checkVal)
     // deduce each block
     for (RowColCount blkRow = 0; blkRow < BLK_SIDE_SZ; ++blkRow) {
         for (RowColCount blkCol = 0; blkCol < BLK_SIDE_SZ; ++blkCol) {
-            bool curBlkPossible[BLK_SIDE_SZ][BLK_SIDE_SZ];
+            bool curBlkImpossible[BLK_SIDE_SZ][BLK_SIDE_SZ];
             RowColCount emptyRow, emptyCol;
             uint32_t emptyCnt;
 
-            memset(curBlkPossible, 0, sizeof curBlkPossible);
-
-            cerr << "checking " << (int) blkRow << " " << (int) blkCol << endl;
+            for (RowColCount row = 0; row < BLK_SIDE_SZ; ++row) {
+                for (RowColCount col = 0; col < BLK_SIDE_SZ; ++col) {
+                    curBlkImpossible[row][col] =
+                        (config[ABS_ROW_COL(blkRow, row)][ABS_ROW_COL(blkCol, col)] != EMPTY);
+                }
+            }
 
             if (fillBlk[blkRow][blkCol][checkVal]) {
                 goto TRY_THIS_BLOCK_END;
@@ -44,7 +47,7 @@ void Board::deduceOneVal(CellVal checkVal)
             for (RowColCount row = 0; row < BLK_SIDE_SZ; ++row) {
                 if (fillRow[ABS_ROW_COL(blkRow, row)][checkVal]) {
                     for (RowColCount col = 0; col < BLK_SIDE_SZ; ++col) {
-                        curBlkPossible[row][col] = true;
+                        curBlkImpossible[row][col] = true;
                     }
                 }
             }
@@ -52,17 +55,15 @@ void Board::deduceOneVal(CellVal checkVal)
             for (RowColCount col = 0; col < BLK_SIDE_SZ; ++col) {
                 if (fillCol[ABS_ROW_COL(blkCol, col)][checkVal]) {
                     for (RowColCount row = 0; row < BLK_SIDE_SZ; ++row) {
-                        curBlkPossible[row][col] = true;
+                        curBlkImpossible[row][col] = true;
                     }
                 }
             }
 
-            cerr << (int) blkRow << " " << (int) blkCol << endl;
-
             emptyCnt = 0;
             for (RowColCount row = 0; row < BLK_SIDE_SZ; ++row) {
                 for (RowColCount col = 0; col < BLK_SIDE_SZ; ++col) {
-                    if (!curBlkPossible[row][col]) {
+                    if (!curBlkImpossible[row][col]) {
                         if (emptyCnt >= 1) {
                             goto TRY_THIS_BLOCK_END;
                         }
@@ -79,7 +80,6 @@ void Board::deduceOneVal(CellVal checkVal)
                 return;
             }
 
-            cout << "er ec " << (int) emptyRow << " " << (int) emptyCol << endl;
             setCellNoCheck(checkVal, emptyRow, emptyCol);
 
             TRY_THIS_BLOCK_END:;
