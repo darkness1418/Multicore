@@ -16,7 +16,7 @@
 typedef uint8_t CellVal;
 typedef uint8_t RowColCount;
 
-#define ABS_ROW_COL(blkRowCol, offset) ((blkRow)*BLK_SIDE_SZ+offset)
+#define ABS_ROW_COL(blkRowCol, offset) ((blkRowCol)*BLK_SIDE_SZ+(offset))
 #define GET_BLK_ROW_COL(rowcol) ((rowcol)/BLK_SIDE_SZ)
 
 #define STILL_POSSIBLE 0
@@ -39,22 +39,17 @@ struct Board {
     Board();
 
     void clearChange();
-    // void deduceOneCell(RowColCount row, RowColCount col);
+    void deduceOneCell(RowColCount row, RowColCount col);
     void deduceOneVal(CellVal checkVal);
-    // void getAllEmptyCellLocation(RowColCount *rowLst[], RowColCount *colLst[]);
-    // uint32_t getEmptyCellCount();
-    // bool isChanged();
-    // bool isImmediatelyPossible();
+    uint32_t getAllEmptyCellLocation(RowColCount rowLst[], RowColCount colLst[]);
+    bool isChanged();
+    bool isImmediatelyPossible();
     void setCellNoCheck(CellVal setVal, RowColCount row, RowColCount col);
+    bool setCellCheck(CellVal setVal, RowColCount row, RowColCount col);
+    void unsetCell(RowColCount row, RowColCount col);
+    void validate();
 };
 
 
 std::istream &operator>>(std::istream &is, Board &board);
 std::ostream &operator<<(std::ostream &os, Board &board);
-
-
-// ConflictStatus deduceType1Blk(Board &board, CellVal checkVal, RowColCount blkRow, RowColCount blkCol);
-// ConflictStatus deduceType1Board(Board &board, CellVal checkVal);
-//
-// ConflictStatus deduceType2Row(Board &board, RowColCount row);
-// ConflictStatus deduceType2Col(Board &board, RowColCount col);

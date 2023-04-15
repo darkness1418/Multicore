@@ -24,6 +24,33 @@ void Board::clearChange()
     changeSinceLast = false;
 }
 
+void Board::deduceOneCell(RowColCount row, RowColCount col)
+{
+    RowColCount blkRow = GET_BLK_ROW_COL(row);
+    RowColCount blkCol = GET_BLK_ROW_COL(col);
+    CellVal finalVal = EMPTY;
+
+    if (config[row][col] != EMPTY) {
+        return;
+    }
+
+    for (CellVal tryVal = MIN_CELL_VAL; tryVal <= MAX_CELL_VAL; ++tryVal) {
+        if (!fillRow[row][tryVal] && !fillCol[col][tryVal] && !fillBlk[blkRow][blkCol][tryVal]) {
+            if (finalVal != EMPTY) {
+                return;
+            }
+            finalVal = tryVal;
+        }
+    }
+
+    if (finalVal == EMPTY) {
+        possible = false;
+        return;
+    }
+
+    setCellNoCheck(finalVal, row, col);
+}
+
 void Board::deduceOneVal(CellVal checkVal)
 {
     // deduce each block
@@ -33,15 +60,15 @@ void Board::deduceOneVal(CellVal checkVal)
             RowColCount emptyRow, emptyCol;
             uint32_t emptyCnt;
 
+            if (fillBlk[blkRow][blkCol][checkVal]) {
+                goto TRY_THIS_BLOCK_END;
+            }
+
             for (RowColCount row = 0; row < BLK_SIDE_SZ; ++row) {
                 for (RowColCount col = 0; col < BLK_SIDE_SZ; ++col) {
                     curBlkImpossible[row][col] =
                         (config[ABS_ROW_COL(blkRow, row)][ABS_ROW_COL(blkCol, col)] != EMPTY);
                 }
-            }
-
-            if (fillBlk[blkRow][blkCol][checkVal]) {
-                goto TRY_THIS_BLOCK_END;
             }
 
             for (RowColCount row = 0; row < BLK_SIDE_SZ; ++row) {
@@ -87,15 +114,97 @@ void Board::deduceOneVal(CellVal checkVal)
     }
 }
 
+uint32_t Board::getAllEmptyCellLocation(RowColCount rowLst[], RowColCount colLst[])
+{
+    uint32_t emptyCnt = 0;
+
+    for (RowColCount row = 0; row < BLK_SZ; ++row) {
+        for (RowColCount col = 0; col < BLK_SZ; ++col) {
+            if (config[row][col] == EMPTY) {
+                rowLst[emptyCnt] = row;
+                colLst[emptyCnt] = col;
+                ++emptyCnt;
+            }
+        }
+    }
+
+    return emptyCnt;
+}
+
+bool Board::isChanged()
+{
+    return changeSinceLast;
+}
+
+bool Board::isImmediatelyPossible()
+{
+    return possible;
+}
+
 void Board::setCellNoCheck(CellVal setVal, RowColCount row, RowColCount col)
 {
-    assert(setVal == EMPTY || setVal >= MIN_CELL_VAL && setVal <= MAX_CELL_VAL);
+    assert(setVal >= MIN_CELL_VAL && setVal <= MAX_CELL_VAL);
+
     config[row][col] = setVal;
 
     fillRow[row][setVal] = true;
     fillCol[col][setVal] = true;
     fillBlk[GET_BLK_ROW_COL(row)][GET_BLK_ROW_COL(col)][setVal] = true;
     changeSinceLast = true;
+}
+
+bool Board::setCellCheck(CellVal setVal, RowColCount row, RowColCount col)
+{
+    if (
+        setVal == EMPTY ||
+        setVal < MIN_CELL_VAL ||
+        setVal > MAX_CELL_VAL ||
+        fillRow[row][setVal] ||
+        fillCol[col][setVal] ||
+        fillBlk[GET_BLK_ROW_COL(row)][GET_BLK_ROW_COL(col)][setVal]
+    ) {
+        return false;
+    }
+
+    setCellNoCheck(setVal, row, col);
+    return true;
+}
+
+void Board::unsetCell(RowColCount row, RowColCount col)
+{
+    CellVal val = config[row][col];
+
+    config[row][col] = EMPTY;
+
+    fillRow[row][val] = false;
+    fillCol[col][val] = false;
+    fillBlk[GET_BLK_ROW_COL(row)][GET_BLK_ROW_COL(col)][val] = false;
+}
+
+void Board::validate()
+{
+    bool refFillRow[BLK_SZ][BLK_SZ+1];
+    bool refFillCol[BLK_SZ][BLK_SZ+1];
+    bool refFillBlk[BLK_SIDE_SZ][BLK_SIDE_SZ][BLK_SZ+1];
+
+    memset(refFillRow, 0, sizeof refFillRow);
+    memset(refFillCol, 0, sizeof refFillCol);
+    memset(refFillBlk, 0, sizeof refFillBlk);
+
+    for (RowColCount row = 0; row < BLK_SZ; ++row) {
+        for (RowColCount col = 0; col < BLK_SZ; ++col) {
+            CellVal curVal = config[row][col];
+            if (curVal != EMPTY) {
+                refFillRow[row][curVal] = true;
+                refFillCol[col][curVal] = true;
+                refFillBlk[GET_BLK_ROW_COL(row)][GET_BLK_ROW_COL(col)][curVal] = true;
+            }
+        }
+    }
+
+    assert(memcmp(fillRow, refFillRow, sizeof refFillRow) == 0);
+    assert(memcmp(fillCol, refFillCol, sizeof refFillCol) == 0);
+    assert(memcmp(fillBlk, refFillBlk, sizeof refFillBlk) == 0);
 }
 
 
@@ -119,7 +228,9 @@ istream &operator>>(istream &is, Board &board)
             }
 
             is >> nextVal;
-            board.setCellNoCheck((CellVal) nextVal, row, col);
+            if ((CellVal) nextVal != EMPTY && !board.setCellCheck((CellVal) nextVal, row, col)) {
+                goto FINISH_READ;
+            }
         }
     }
 
@@ -157,40 +268,3 @@ ostream &operator<<(ostream &os, Board &board)
 
     return os;
 }
-
-/*
-
-
-bool existInRow(Board &board, CellVal val, RowColCount blkRow)
-{
-
-}
-
-bool existInCol(Board &board, CellVal val, RowColCount blkCol)
-{
-
-}
-
-ConflictStatus deduceType1Blk(Board &board, CellVal checkVal, RowColCount blkRow, RowColCount blkCol)
-{
-
-}
-
-ConflictStatus deduceType1Board(Board &board, CellVal checkVal)
-{
-    for (RowColCount blkRow = 0; blkRow < BLK_SIDE_SZ; ++blkRow) {
-        for (RowColCount blkCol = 0; blkCol < BLK_SIDE_SZ; ++blkCol) {
-
-        }
-    }
-}
-
-ConflictStatus deduceType2Row(Board &board, RowColCount row)
-{
-
-}
-
-ConflictStatus deduceType2Col(Board &board, RowColCount col)
-{
-
-} */
