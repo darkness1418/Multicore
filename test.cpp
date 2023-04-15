@@ -14,9 +14,11 @@ int main(int argc, char *argv[])
 
     cin >> board;
 
-    cout << board;
+    cout << board << endl;
     board.deduceOneVal(1);
-    cout << board;
+    cout << board << endl;
+    board.deduceOneVal(2);
+    cout << board << endl;
 
     return 0;
 }
