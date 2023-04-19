@@ -3,9 +3,8 @@
 #include <vector>
 #include "board_cfg1.h"
 
-
 #define MIN_START_CONFIG 12
-
+#define NUM_THREADS 24
 
 using namespace std;
 
@@ -61,7 +60,7 @@ int main(int argc, char **argv)
     startConfigs = getStartConfigs(board, MIN_START_CONFIG);
 
     // find solution
-    #pragma omp parallel for num_threads(12) schedule(dynamic)
+    #pragma omp parallel for num_threads(NUM_THREADS) schedule(dynamic)
     for (size_t i = 0; i < startConfigs.size(); ++i) {
         if (findSol(startConfigs[i])) {
             doesSolExist = true;
