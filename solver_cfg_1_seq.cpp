@@ -4,7 +4,7 @@
 #include "board_cfg1.h"
 
 #define MIN_START_CONFIG 12
-#define NUM_THREADS 24
+#define NUM_THREADS 1
 
 using namespace std;
 
